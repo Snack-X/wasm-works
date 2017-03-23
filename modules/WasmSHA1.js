@@ -11,25 +11,31 @@
       this.module = {};
       this.MEM32 = new Uint32Array(this.memory.buffer);
       this.MEM8 = new Uint8Array(this.memory.buffer);
+      this.ready = false;
+    }
 
+    loadWasmBuffer(buffer) {
       let wasmImport = {
         env: { memory: this.memory },
       };
 
       WebAssembly.instantiate(buffer, wasmImport).then(result => {
+        this.ready = true;
         this.module = result.instance.exports;
         this.emit("ready");
       });
     }
 
     hashString(input) {
+      if(!this.ready) throw "WebAssembly Module is not loaded.";
+
       this.module.sha1_init();
 
       let message = unescape(encodeURIComponent(input));
 
       for(let i = 0 ; i < message.length ; i++) {
         this.MEM8[i % 64] = message.charCodeAt(i);
-        if(i === 63) this.module.sha1_update();
+        if(i % 64 === 63) this.module.sha1_update();
       }
 
       this.module.sha1_end(message.length % 64);
