@@ -218,12 +218,11 @@
         ;; w += 1
         (set_local $w (i32.add (get_local $w) (i32.const 1)))
 
-        ;; if w < 80, continue, else, end loop
-        (if
-          (i32.lt_s (get_local $w) (i32.const 80))
-          (br $loop)
-          (br $done)
-        )
+        ;; if 80 <= w, break
+        (br_if $done (i32.ge_s (get_local $w) (i32.const 80)))
+
+        ;; else, continue
+        (br $loop)
       )
     )
 
@@ -270,10 +269,10 @@
     (if (i32.gt_s (get_local $i) (i32.const 56))
       ;; if 56 < i
       (block
-        ;; zero pad
         (block $done_pad
+          ;; zero pad
           (loop $loop
-            (if (i32.ge_s (get_local $i) (i32.const 64)) (br $done_pad))
+            (br_if $done_pad (i32.ge_s (get_local $i) (i32.const 64)))
 
             (i32.store8 (get_local $i) (i32.const 0))
             (set_local $i (i32.add (get_local $i) (i32.const 1)))
@@ -295,16 +294,14 @@
       )
 
       ;; else
-      (block
+      (block $done_pad
         ;; zero pad
-        (block $done_pad
-          (loop $loop
-            (if (i32.ge_s (get_local $i) (i32.const 56)) (br $done_pad))
+        (loop $loop
+          (br_if $done_pad (i32.ge_s (get_local $i) (i32.const 56)))
 
-            (i32.store8 (get_local $i) (i32.const 0))
-            (set_local $i (i32.add (get_local $i) (i32.const 1)))
-            (br $loop)
-          )
+          (i32.store8 (get_local $i) (i32.const 0))
+          (set_local $i (i32.add (get_local $i) (i32.const 1)))
+          (br $loop)
         )
       )
     )

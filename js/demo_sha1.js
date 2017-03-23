@@ -25,7 +25,7 @@ window.addEventListener("load", () => {
     $btnTest.addEventListener("click", () => { testSha1(); });
   };
 
-  fetch("modules/sha1.wasm?v=1.0.0")
+  fetch("modules/sha1.wasm?v=1.0.1")
     .then(res => res.arrayBuffer())
     .then(buffer => {
       sha1.loadWasmBuffer(buffer);
