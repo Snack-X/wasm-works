@@ -25,7 +25,7 @@ window.addEventListener("load", () => {
     $btnTest.addEventListener("click", () => { testSha256(); });
   };
 
-  fetch("modules/sha256.wasm?v=1.0.0")
+  fetch("modules/sha256.wasm?v=1.0.1")
     .then(res => res.arrayBuffer())
     .then(buffer => {
       sha256.loadWasmBuffer(buffer);

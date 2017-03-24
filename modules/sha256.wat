@@ -3,13 +3,17 @@
   ;; 0x00 ~ 0x3f will be used as input chunk
   ;; 0x40 ~ 0x5f will be used to store initial hash values (h0 ~ h7)
   ;; 0x60 ~ 0x63 will be used to store `message_len`
-  ;; 0x100 ~ 0x1ff will be used to store round constants (set from JS)
+  ;; 0x100 ~ 0x1ff will be used to store round constants
   (import "env" "memory" (memory 1))
 
   ;; functions to export
   (export "sha256_init" (func $sha256_init))
   (export "sha256_update" (func $sha256_update))
   (export "sha256_end" (func $sha256_end))
+
+  ;; data section for round constant
+  ;; note: wasm stores numbers in little-endian
+  (data (i32.const 0x100) "\98\2f\8a\42\91\44\37\71\cf\fb\c0\b5\a5\db\b5\e9\5b\c2\56\39\f1\11\f1\59\a4\82\3f\92\d5\5e\1c\ab\98\aa\07\d8\01\5b\83\12\be\85\31\24\c3\7d\0c\55\74\5d\be\72\fe\b1\de\80\a7\06\dc\9b\74\f1\9b\c1\c1\69\9b\e4\86\47\be\ef\c6\9d\c1\0f\cc\a1\0c\24\6f\2c\e9\2d\aa\84\74\4a\dc\a9\b0\5c\da\88\f9\76\52\51\3e\98\6d\c6\31\a8\c8\27\03\b0\c7\7f\59\bf\f3\0b\e0\c6\47\91\a7\d5\51\63\ca\06\67\29\29\14\85\0a\b7\27\38\21\1b\2e\fc\6d\2c\4d\13\0d\38\53\54\73\0a\65\bb\0a\6a\76\2e\c9\c2\81\85\2c\72\92\a1\e8\bf\a2\4b\66\1a\a8\70\8b\4b\c2\a3\51\6c\c7\19\e8\92\d1\24\06\99\d6\85\35\0e\f4\70\a0\6a\10\16\c1\a4\19\08\6c\37\1e\4c\77\48\27\b5\bc\b0\34\b3\0c\1c\39\4a\aa\d8\4e\4f\ca\9c\5b\f3\6f\2e\68\ee\82\8f\74\6f\63\a5\78\14\78\c8\84\08\02\c7\8c\fa\ff\be\90\eb\6c\50\a4\f7\a3\f9\be\f2\78\71\c6")
 
   ;; helper function `get_word`
   ;; input  - word index
@@ -48,6 +52,7 @@
   )
 
   ;; helper function `flip_endian`
+  ;; once `i32.bswap` is landed, this function is useless
   (func $flip_endian (param $w i32) (result i32)
     ;; (w & 0xff000000 >>> 24) |
     ;; (w & 0x00ff0000 >>>  8) |
