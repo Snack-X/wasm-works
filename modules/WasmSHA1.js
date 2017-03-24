@@ -40,11 +40,11 @@
 
       this.module.sha1_end(message.length % 64);
 
-      let h0 = pad(this.MEM32[17]),
-          h1 = pad(this.MEM32[18]),
-          h2 = pad(this.MEM32[19]),
-          h3 = pad(this.MEM32[20]),
-          h4 = pad(this.MEM32[21]);
+      let h0 = pad(this.MEM32[16]),
+          h1 = pad(this.MEM32[17]),
+          h2 = pad(this.MEM32[18]),
+          h3 = pad(this.MEM32[19]),
+          h4 = pad(this.MEM32[20]);
       let result = h0 + h1 + h2 + h3 + h4;
 
       return result;

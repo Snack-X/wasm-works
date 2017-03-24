@@ -1,8 +1,7 @@
 (module
   ;; import 1 page of memory from env.memory
   ;; 0x00 ~ 0x3f will be used as input chunk
-  ;; 0x40 ~ 0x5f will be used to store initial hash values (h0 ~ h7)
-  ;; 0x60 ~ 0x63 will be used to store `message_len`
+  ;; 0x40 ~ 0x5f will be used as output value
   ;; 0x100 ~ 0x1ff will be used to store round constants
   (import "env" "memory" (memory 1))
 
@@ -10,6 +9,17 @@
   (export "sha256_init" (func $sha256_init))
   (export "sha256_update" (func $sha256_update))
   (export "sha256_end" (func $sha256_end))
+
+  ;; global variables
+  (global $message_len (mut i32) (i32.const 0))
+  (global $h0 (mut i32) (i32.const 0))
+  (global $h1 (mut i32) (i32.const 0))
+  (global $h2 (mut i32) (i32.const 0))
+  (global $h3 (mut i32) (i32.const 0))
+  (global $h4 (mut i32) (i32.const 0))
+  (global $h5 (mut i32) (i32.const 0))
+  (global $h6 (mut i32) (i32.const 0))
+  (global $h7 (mut i32) (i32.const 0))
 
   ;; data section for round constant
   ;; note: wasm stores numbers in little-endian
@@ -82,16 +92,16 @@
     (i64.store (i32.const 0x30) (i64.const 0))
     (i64.store (i32.const 0x38) (i64.const 0))
 
-    (i32.store (i32.const 0x40) (i32.const 0x6a09e667))
-    (i32.store (i32.const 0x44) (i32.const 0xbb67ae85))
-    (i32.store (i32.const 0x48) (i32.const 0x3c6ef372))
-    (i32.store (i32.const 0x4c) (i32.const 0xa54ff53a))
-    (i32.store (i32.const 0x50) (i32.const 0x510e527f))
-    (i32.store (i32.const 0x54) (i32.const 0x9b05688c))
-    (i32.store (i32.const 0x58) (i32.const 0x1f83d9ab))
-    (i32.store (i32.const 0x5c) (i32.const 0x5be0cd19))
+    (set_global $message_len (i32.const 0))
 
-    (i32.store (i32.const 0x60) (i32.const 0x00000000))
+    (set_global $h0 (i32.const 0x6a09e667))
+    (set_global $h1 (i32.const 0xbb67ae85))
+    (set_global $h2 (i32.const 0x3c6ef372))
+    (set_global $h3 (i32.const 0xa54ff53a))
+    (set_global $h4 (i32.const 0x510e527f))
+    (set_global $h5 (i32.const 0x9b05688c))
+    (set_global $h6 (i32.const 0x1f83d9ab))
+    (set_global $h7 (i32.const 0x5be0cd19))
   )
 
   ;; function `sha256_update`
@@ -108,20 +118,17 @@
     (local $ch i32) (local $maj i32) (local $temp1 i32) (local $temp2 i32)
 
     ;; message_len += 64 bytes (512 bits)
-    (i32.store
-      (i32.const 0x60)
-      (i32.add (i32.load (i32.const 0x60)) (i32.const 64))
-    )
+    (set_global $message_len (i32.add (get_global $message_len) (i32.const 64)))
 
     ;; load h0 ~ h7
-    (set_local $a (i32.load (i32.const 0x40)))
-    (set_local $b (i32.load (i32.const 0x44)))
-    (set_local $c (i32.load (i32.const 0x48)))
-    (set_local $d (i32.load (i32.const 0x4c)))
-    (set_local $e (i32.load (i32.const 0x50)))
-    (set_local $f (i32.load (i32.const 0x54)))
-    (set_local $g (i32.load (i32.const 0x58)))
-    (set_local $h (i32.load (i32.const 0x5c)))
+    (set_local $a (get_global $h0))
+    (set_local $b (get_global $h1))
+    (set_local $c (get_global $h2))
+    (set_local $d (get_global $h3))
+    (set_local $e (get_global $h4))
+    (set_local $f (get_global $h5))
+    (set_local $g (get_global $h6))
+    (set_local $h (get_global $h7))
 
     ;; loop
     (set_local $w (i32.const 0))
@@ -244,14 +251,14 @@
     )
 
     ;; feed to h0 ~ h7
-    (i32.store (i32.const 0x40) (i32.add (get_local $a) (i32.load (i32.const 0x40))))
-    (i32.store (i32.const 0x44) (i32.add (get_local $b) (i32.load (i32.const 0x44))))
-    (i32.store (i32.const 0x48) (i32.add (get_local $c) (i32.load (i32.const 0x48))))
-    (i32.store (i32.const 0x4c) (i32.add (get_local $d) (i32.load (i32.const 0x4c))))
-    (i32.store (i32.const 0x50) (i32.add (get_local $e) (i32.load (i32.const 0x50))))
-    (i32.store (i32.const 0x54) (i32.add (get_local $f) (i32.load (i32.const 0x54))))
-    (i32.store (i32.const 0x58) (i32.add (get_local $g) (i32.load (i32.const 0x58))))
-    (i32.store (i32.const 0x5c) (i32.add (get_local $h) (i32.load (i32.const 0x5c))))
+    (set_global $h0 (i32.add (get_local $a) (get_global $h0)))
+    (set_global $h1 (i32.add (get_local $b) (get_global $h1)))
+    (set_global $h2 (i32.add (get_local $c) (get_global $h2)))
+    (set_global $h3 (i32.add (get_local $d) (get_global $h3)))
+    (set_global $h4 (i32.add (get_local $e) (get_global $h4)))
+    (set_global $h5 (i32.add (get_local $f) (get_global $h5)))
+    (set_global $h6 (i32.add (get_local $g) (get_global $h6)))
+    (set_global $h7 (i32.add (get_local $h) (get_global $h7)))
   )
 
   ;; function `sha256_end`
@@ -262,7 +269,7 @@
 
     ;; total_len = message_len + final_len
     (set_local $total_len (i32.add
-      (i32.load (i32.const 0x60))
+      (get_global $message_len)
       (get_local $final_len)
     ))
 
@@ -317,5 +324,15 @@
 
     ;; update final block
     (call $sha256_update)
+
+    ;; copy h0~7 to memory
+    (i32.store (i32.const 0x40) (get_global $h0))
+    (i32.store (i32.const 0x44) (get_global $h1))
+    (i32.store (i32.const 0x48) (get_global $h2))
+    (i32.store (i32.const 0x4c) (get_global $h3))
+    (i32.store (i32.const 0x50) (get_global $h4))
+    (i32.store (i32.const 0x54) (get_global $h5))
+    (i32.store (i32.const 0x58) (get_global $h6))
+    (i32.store (i32.const 0x5c) (get_global $h7))
   )
 )

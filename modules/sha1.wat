@@ -1,18 +1,21 @@
 (module
   ;; import 1 page of memory from env.memory
   ;; 0x00 ~ 0x3f will be used as input chunk
-  ;; 0x40 ~ 0x43 will be used to store `message_len`
-  ;; 0x44 ~ 0x47 will be used to store `h0`
-  ;; 0x48 ~ 0x4b will be used to store `h1`
-  ;; 0x4c ~ 0x4f will be used to store `h2`
-  ;; 0x50 ~ 0x53 will be used to store `h3`
-  ;; 0x54 ~ 0x57 will be used to store `h4`
+  ;; 0x40 ~ 0x53 will be used as output value
   (import "env" "memory" (memory 1))
 
   ;; functions to export
   (export "sha1_init" (func $sha1_init))
   (export "sha1_update" (func $sha1_update))
   (export "sha1_end" (func $sha1_end))
+
+  ;; global variables
+  (global $message_len (mut i32) (i32.const 0))
+  (global $h0 (mut i32) (i32.const 0))
+  (global $h1 (mut i32) (i32.const 0))
+  (global $h2 (mut i32) (i32.const 0))
+  (global $h3 (mut i32) (i32.const 0))
+  (global $h4 (mut i32) (i32.const 0))
 
   ;; helper function `get_word`
   ;; input  - word index
@@ -41,6 +44,7 @@
   )
 
   ;; helper function `flip_endian`
+  ;; once `i32.bswap` is landed, this function is useless
   (func $flip_endian (param $w i32) (result i32)
     ;; (w & 0xff000000 >>> 24) |
     ;; (w & 0x00ff0000 >>>  8) |
@@ -70,12 +74,12 @@
     (i64.store (i32.const 0x30) (i64.const 0))
     (i64.store (i32.const 0x38) (i64.const 0))
 
-    (i32.store (i32.const 0x40) (i32.const 0x00000000))
-    (i32.store (i32.const 0x44) (i32.const 0x67452301))
-    (i32.store (i32.const 0x48) (i32.const 0xefcdab89))
-    (i32.store (i32.const 0x4c) (i32.const 0x98badcfe))
-    (i32.store (i32.const 0x50) (i32.const 0x10325476))
-    (i32.store (i32.const 0x54) (i32.const 0xc3d2e1f0))
+    (set_global $message_len (i32.const 0))
+    (set_global $h0 (i32.const 0x67452301))
+    (set_global $h1 (i32.const 0xefcdab89))
+    (set_global $h2 (i32.const 0x98badcfe))
+    (set_global $h3 (i32.const 0x10325476))
+    (set_global $h4 (i32.const 0xc3d2e1f0))
   )
 
   ;; function `sha1_update`
@@ -89,17 +93,14 @@
     (local $f i32) (local $k i32) (local $t i32)
 
     ;; message_len += 64 bytes (512 bits)
-    (i32.store
-      (i32.const 0x0040)
-      (i32.add (i32.load (i32.const 0x0040)) (i32.const 64))
-    )
+    (set_global $message_len (i32.add (get_global $message_len) (i32.const 64)))
 
     ;; load h0 ~ h4
-    (set_local $a (i32.load (i32.const 0x44)))
-    (set_local $b (i32.load (i32.const 0x48)))
-    (set_local $c (i32.load (i32.const 0x4c)))
-    (set_local $d (i32.load (i32.const 0x50)))
-    (set_local $e (i32.load (i32.const 0x54)))
+    (set_local $a (get_global $h0))
+    (set_local $b (get_global $h1))
+    (set_local $c (get_global $h2))
+    (set_local $d (get_global $h3))
+    (set_local $e (get_global $h4))
 
     ;; loop
     (set_local $w (i32.const 0))
@@ -227,26 +228,11 @@
     )
 
     ;; feed to h0 ~ h4
-    (i32.store
-      (i32.const 0x44)
-      (i32.add (get_local $a) (i32.load (i32.const 0x44)))
-    )
-    (i32.store
-      (i32.const 0x48)
-      (i32.add (get_local $b) (i32.load (i32.const 0x48)))
-    )
-    (i32.store
-      (i32.const 0x4c)
-      (i32.add (get_local $c) (i32.load (i32.const 0x4c)))
-    )
-    (i32.store
-      (i32.const 0x50)
-      (i32.add (get_local $d) (i32.load (i32.const 0x50)))
-    )
-    (i32.store
-      (i32.const 0x54)
-      (i32.add (get_local $e) (i32.load (i32.const 0x54)))
-    )
+    (set_global $h0 (i32.add (get_local $a) (get_global $h0)))
+    (set_global $h1 (i32.add (get_local $b) (get_global $h1)))
+    (set_global $h2 (i32.add (get_local $c) (get_global $h2)))
+    (set_global $h3 (i32.add (get_local $d) (get_global $h3)))
+    (set_global $h4 (i32.add (get_local $e) (get_global $h4)))
   )
 
   ;; function `sha1_end`
@@ -257,7 +243,7 @@
 
     ;; total_len = message_len + final_len
     (set_local $total_len (i32.add
-      (i32.load (i32.const 0x0040))
+      (get_global $message_len)
       (get_local $final_len)
     ))
 
@@ -312,5 +298,12 @@
 
     ;; update final block
     (call $sha1_update)
+
+    ;; copy h0~4 to memory
+    (i32.store (i32.const 0x40) (get_global $h0))
+    (i32.store (i32.const 0x44) (get_global $h1))
+    (i32.store (i32.const 0x48) (get_global $h2))
+    (i32.store (i32.const 0x4c) (get_global $h3))
+    (i32.store (i32.const 0x50) (get_global $h4))
   )
 )
